@@ -622,8 +622,8 @@
         <mxCell id="4YvVD3O5iODfQbF_6y3F-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;startFill=0;" parent="1" source="ev-QNoOPe0kuKehV-vWC-1" target="G8_qOVzDnZ8bcjeu0tP2-16" edge="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="-749" y="563" />
-              <mxPoint x="-748" y="563" />
+              <mxPoint x="-749" y="443" />
+              <mxPoint x="-749" y="443" />
             </Array>
             <mxPoint x="-760" y="748.04" as="sourcePoint" />
             <mxPoint x="-760" y="323.04166666666674" as="targetPoint" />
