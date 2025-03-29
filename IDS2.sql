@@ -106,6 +106,22 @@ INSERT INTO Person
 VALUES ('640902/4242', 'Keanu Reeves', '+903303429443', 'KenRev@matrix.com');
 INSERT INTO Employee
 VALUES ('640902/4242', 'Security');
+
+-- Add some customers
+INSERT INTO Person 
+VALUES ('600411/1212', 'Jeremy Clarkson', '+949494040393', 'Clark@GrandTour.com');
+INSERT INTO Customer
+VALUES ('600411/1212', 'Jezza');
+
+INSERT INTO Person 
+VALUES ('630116/1213', 'James May', '+934234234234', 'May@GrandTour.com');
+INSERT INTO Customer
+VALUES ('630116/1213', 'Captain Slow');
+
+INSERT INTO Person 
+VALUES ('691219/4242', 'Richard Hammond', '+90444555444', 'Hamm@GrandTour.com');
+INSERT INTO Customer
+VALUES ('691219/4242', 'The Hamster');
 -- Populate lounge with two lounges
 INSERT INTO lounge VALUES (1, 10, 'VIP seating');
 INSERT INTO lounge VALUES (2, 20, 'Live music');
@@ -118,7 +134,7 @@ INSERT INTO tTable VALUES (5, 4);
 INSERT INTO tTable VALUES (6, 4);
 INSERT INTO tTable VALUES (7, 5);
 INSERT INTO tTable VALUES (8, 5);
--- Populate tProduct with products
+-- Populate tProduct with products - maybe automated generating? - Barcodes must be unique
 INSERT INTO tProduct VALUES ('000000001', 'Grilled Cheese',  9.50);
 INSERT INTO tProduct VALUES ('000000002', 'French Fries',    4.20);
 INSERT INTO tProduct VALUES ('000000003', 'Cordon Bleu',     11.55);
@@ -131,15 +147,9 @@ INSERT INTO tProduct VALUES ('000000008', 'Water',           120.99);
 ------------------------------------------------------------------
 COMMIT;
 
-SELECT
-    p.person_id,
-    p.name,
-    p.tel,
-    p.email,
-    e.position
-FROM
-    Employee e
-JOIN
-    Person p ON e.person_id = p.person_id;
+-- get all employee
+SELECT * FROM Employee e JOIN Person p ON e.person_id = p.person_id;
+-- get all customers
+SELECT * FROM Customer c JOIN Person p ON c.person_id = p.person_id;
 
 SELECT * FROM tProduct; 
