@@ -12,6 +12,7 @@ DROP TABLE order_item CASCADE CONSTRAINTS;
 DROP SEQUENCE tTable_num;
 DROP SEQUENCE lounge_num;
 DROP SEQUENCE bill_num;
+DROP SEQUENCE order_seq;
 ------------------------------------------------------------------
 
 -- 1. Create tables
@@ -83,9 +84,14 @@ CREATE TABLE bill_tab (
         (table_id IS NULL AND lounge_id IS NOT NULL)
     )
 );
+--- Automatic PK generation if none provided
+--- start
+CREATE SEQUENCE order_seq
+START WITH 1
+INCREMENT BY 1;
 
 CREATE TABLE tOrder (
-    "order_id" INTEGER PRIMARY KEY,
+    "order_id" INT PRIMARY KEY,
     date_time DATE,
     tab_id INT NOT NULL,
     employee_id VARCHAR(11),
@@ -93,7 +99,15 @@ CREATE TABLE tOrder (
     FOREIGN KEY (employee_id) REFERENCES Employee(person_id)
 );
 
-
+CREATE OR REPLACE TRIGGER trg_order_id
+BEFORE INSERT ON tOrder
+FOR EACH ROW
+WHEN (NEW."order_id" IS NULL)
+BEGIN
+    SELECT order_seq.NEXTVAL INTO :NEW."order_id" FROM dual;
+END;
+/
+--- end
 CREATE TABLE tProduct (
     product_id VARCHAR(9) PRIMARY KEY,
     name VARCHAR(20),
@@ -170,22 +184,24 @@ INSERT INTO tTable VALUES (tTable_num.NEXTVAL, 5);
 CREATE SEQUENCE bill_num START WITH 1 INCREMENT BY 1;
 
 INSERT INTO bill_tab (tab_id, table_id, lounge_id) 
-VALUES (1, 1, NULL); -- bill for table 1
+VALUES (bill_num.NEXTVAL, 1, NULL); -- bill for table 1
 
-INSERT INTO bill_tab VALUES (2, 2, NULL); -- bill for table 2
-INSERT INTO bill_tab VALUES (3, NULL, 1); -- bill for lounge 1  
+INSERT INTO bill_tab VALUES (bill_num.NEXTVAL, 2, NULL); -- bill for table 2
+INSERT INTO bill_tab VALUES (bill_num.NEXTVAL, NULL, 1); -- bill for lounge 1  
 
 -- Orders
+INSERT INTO tOrder (date_time, tab_id, employee_id)
+VALUES (TO_DATE('2025-03-29 04:19:10', 'YYYY-MM-DD HH24:MI:SS'), 1, '921231/4343'); -- Jackie made an order for tab1
+
+INSERT INTO tOrder (date_time, tab_id, employee_id)
+VALUES (TO_DATE('2025-03-30 05:19:10', 'YYYY-MM-DD HH24:MI:SS'), 2, '670726/3232'); -- Nick made this one for tab2
+
+INSERT INTO tOrder (date_time, tab_id, employee_id)
+VALUES (TO_DATE('2025-03-30 06:19:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
+INSERT INTO tOrder (date_time, tab_id, employee_id)
+VALUES (TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
 INSERT INTO tOrder ("order_id", date_time, tab_id, employee_id)
-VALUES (1, TO_DATE('2025-03-29 04:19:10', 'YYYY-MM-DD HH24:MI:SS'), 1, '921231/4343'); -- Jackie made an order for tab1
-
-INSERT INTO tOrder 
-VALUES (2, TO_DATE('2025-03-30 05:19:10', 'YYYY-MM-DD HH24:MI:SS'), 2, '670726/3232'); -- Nick made this one for tab2
-
-INSERT INTO tOrder 
-VALUES (3, TO_DATE('2025-03-30 06:19:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
-INSERT INTO tOrder 
-VALUES (4, TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
+VALUES (200, TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
 
 -- Order items first order - tab1 - table1
 INSERT INTO order_item ("order_id", product_id, quantity) 
@@ -227,7 +243,6 @@ INSERT INTO reservation (
     NULL
 );
 
-
 INSERT INTO reservation (
     reservation_id,
     date_time,
@@ -246,58 +261,34 @@ INSERT INTO reservation (
     2  -- lounge 2
 );
 
--- we would use this to see if there is an already existing reservation,
--- only then would the commented out action be allowed
-SELECT * FROM reservation
-WHERE table_id = 1
-AND date_time < TO_DATE('2025-03-30 20:00:00', 'YYYY-MM-DD HH24:MI:SS') + (60/1440)
-AND TO_DATE('2025-03-30 20:00:00', 'YYYY-MM-DD HH24:MI:SS') < (date_time + (duration/1440));
-/*
-INSERT INTO reservation (
-    reservation_id,
-    date_time,
-    number_of_persons,
-    duration,
-    customer_id,
-    table_id,
-    lounge_id
-) VALUES (
-    3,
-    TO_DATE('2025-03-30 20:00:00', 'YYYY-MM-DD HH24:MI:SS'),
-    1,
-    60,
-    '001131/0000', -- Henry
-    1,
-    NULL
-);
-*/
+-- todo: check for overlapping reservations
 --------------------------------------------------------------------------
 COMMIT;
 
-SELECT * FROM Employee e JOIN Person p ON e.person_id = p.person_id;
-SELECT * FROM Customer c JOIN Person p ON c.person_id = p.person_id;
-SELECT * FROM tProduct;
-SELECT * FROM tTable;
-SELECT * FROM lounge;
-SELECT * FROM bill_tab; 
-
+-- not a part of the assignment, was used for testing
+SELECT * FROM Employee e JOIN Person p ON e.person_id = p.person_id; -- show employees with all their info
+SELECT * FROM Customer c JOIN Person p ON c.person_id = p.person_id; -- show customers with all their info
+SELECT * FROM tProduct; -- show all products, their codes, names and prices
+SELECT * FROM tTable; -- show all tables and their capacities
+SELECT * FROM lounge; -- show all lounges, their capacities and services
+SELECT * FROM bill_tab;  -- show all existing tabs
 
 --- Orders for specific table
 SELECT
-    o."order_id",
     TO_CHAR(o.date_time, 'YYYY-MM-DD HH24:MI:SS') as time_ordered,
-    o.employee_id,
-    bt.table_id
+    bt.table_id,
+    o."order_id",
+    o.employee_id
 FROM tOrder o
 JOIN bill_tab bt ON o.tab_id = bt.tab_id
-WHERE bt.table_id = 1;  -- Replace with desired table ID
+WHERE bt.table_id = 1;  -- Replace with desired table ID (Use OR for multiple)
 
 --- Orders for specific lounge
 SELECT
-    o."order_id",
     TO_CHAR(o.date_time, 'YYYY-MM-DD HH24:MI:SS') as time_ordered,
-    o.employee_id,
-    bt.lounge_id
+    o."order_id",
+    bt.lounge_id,
+    o.employee_id
 FROM tOrder o
 JOIN bill_tab bt ON o.tab_id = bt.tab_id
 WHERE bt.lounge_id = 1;  -- Replace with desired lounge ID
@@ -315,17 +306,17 @@ JOIN order_item oi ON o."order_id" = oi."order_id"
 JOIN tProduct tp ON oi.product_id = tp.product_id
 WHERE o.tab_id = 1;  -- Desired tab
 
-    --- and its total sum
-    SELECT
-        o.tab_id,
-        SUM(oi.quantity * tp.price) AS tab_total
-    FROM tOrder o
-    JOIN order_item oi ON o."order_id" = oi."order_id"
-    JOIN tProduct tp ON oi.product_id = tp.product_id
-    WHERE o.tab_id = 1 -- Desired tab
-    GROUP BY o.tab_id;
+-- Total sum of orders in tab
+SELECT
+    o.tab_id,
+    SUM(oi.quantity * tp.price) AS tab_total
+FROM tOrder o
+JOIN order_item oi ON o."order_id" = oi."order_id"
+JOIN tProduct tp ON oi.product_id = tp.product_id
+WHERE o.tab_id = 1 -- Desired tab
+GROUP BY o.tab_id;
 
---
+-- Select all reservations - beautified
 SELECT
     r.reservation_id,
     TO_CHAR(r.date_time, 'YYYY-MM-DD HH24:MI') AS reserved_for,
