@@ -302,7 +302,7 @@ FROM tOrder o
 JOIN bill_tab bt ON o.tab_id = bt.tab_id
 WHERE bt.lounge_id = 1;  -- Replace with desired lounge ID
 
--- Specific tab
+-- Specific tab - content of its orders
 SELECT
     o."order_id",
     TO_CHAR(o.date_time, 'YYYY-MM-DD HH24:MI:SS') as time_ordered,
@@ -313,7 +313,7 @@ SELECT
 FROM tOrder o
 JOIN order_item oi ON o."order_id" = oi."order_id"
 JOIN tProduct tp ON oi.product_id = tp.product_id
-WHERE o.tab_id = 1;  -- Content of all orders in a single tab specified
+WHERE o.tab_id = 1;  -- Desired tab
 
     --- and its total sum
     SELECT
