@@ -188,14 +188,14 @@ INSERT INTO tOrder (date_time, tab_id, employee_id)
 VALUES (TO_DATE('2025-03-29 04:19:10', 'YYYY-MM-DD HH24:MI:SS'), 1, '921231/4343'); -- Jackie made an order for tab1
 
 INSERT INTO tOrder (date_time, tab_id, employee_id)
-VALUES (TO_DATE('2025-03-30 05:19:10', 'YYYY-MM-DD HH24:MI:SS'), 2, '670726/3232'); -- Jason made this one for tab2
+VALUES (TO_DATE('2025-03-29 05:19:10', 'YYYY-MM-DD HH24:MI:SS'), 2, '640107/5544'); -- Nick made this one for tab2
 
 INSERT INTO tOrder (date_time, tab_id, employee_id)
 VALUES (TO_DATE('2025-03-30 06:19:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
 INSERT INTO tOrder (date_time, tab_id, employee_id)
-VALUES (TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
+VALUES (TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '670726/3232'); -- JAson, tab3 (lounge)
 INSERT INTO tOrder ("order_id", date_time, tab_id, employee_id)
-VALUES (200, TO_DATE('2025-03-30 06:46:40', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
+VALUES (200, TO_DATE('2025-03-31 06:46:40', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
 
 -- Order items first order - tab1 - table1
 INSERT INTO order_item ("order_id", product_id, quantity) 
@@ -337,7 +337,7 @@ GROUP BY TABLE_ID, LOUNGE_ID;
 -- Aggregate function SUM() with GROUP BY
 SELECT
     o.tab_id,
-    SUM(oi.quantity * tp.price) AS tab_total,
+    SUM(oi.quantity * tp.price) AS "SUM",
     bt.table_id,
     bt.lounge_id
 FROM tOrder o
@@ -358,6 +358,26 @@ WHERE EXISTS (
     WHERE rs.TABLE_ID = t.TABLE_ID
 );
 
+-- Which waiters created orders on 2025-03-30 and how many
+-- Use of IN
+SELECT 
+    p.name,
+    COUNT(*) AS orders_created
+FROM Employee e
+JOIN Person p ON e.person_id = p.person_id
+JOIN tOrder od ON e.person_id = od.employee_id
+WHERE e.person_id IN (
+    SELECT o.employee_id
+    FROM tOrder o
+    WHERE o.date_time BETWEEN TO_DATE('2025-03-30 00:00:00', 'YYYY-MM-DD HH24:MI:SS') 
+                          AND TO_DATE('2025-03-30 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+)
+AND od.date_time BETWEEN TO_DATE('2025-03-30 00:00:00', 'YYYY-MM-DD HH24:MI:SS') 
+                     AND TO_DATE('2025-03-30 23:59:59', 'YYYY-MM-DD HH24:MI:SS')
+GROUP BY p.name;
+
+
+
 /*
     SQL skript, který nejprve vytvoří základní objekty schéma databáze a naplní tabulky ukázkovými daty 
     (stejně jako skript v bodě 2) a poté provede několik dotazů SELECT.
@@ -367,7 +387,7 @@ WHERE EXISTS (
     - ACTUAL:1      1x využívající spojení tří tabulek
     - ACTUAL:2      2x dotazy s klauzulí GROUP BY a agregační funkcí
     - ACTUAL:1      1x dotaz obsahující predikát EXISTS a 
-    - ACTUAL:0      1x dotaz s predikátem IN s vnořeným selectem (nikoliv IN s množinou konstantních dat), 
+    - ACTUAL:1      1x dotaz s predikátem IN s vnořeným selectem (nikoliv IN s množinou konstantních dat), 
     
     tj. celkem minimálně 7 dotazů. U každého z dotazů musí být (v komentáři SQL kódu) popsáno srozumitelně, 
     jaká data hledá daný dotaz (jaká je jeho funkce v aplikaci).
