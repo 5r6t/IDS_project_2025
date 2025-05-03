@@ -150,18 +150,16 @@ CREATE OR REPLACE TRIGGER trg_order_sum_to_tab
 BEFORE INSERT ON order_item
 FOR EACH ROW
 DECLARE
-    v_sum DECIMAL(10, 2);
+    v_price tProduct.price%TYPE;
 BEGIN
-    SELECT SUM(quantity) INTO v_sum
+    SELECT price INTO v_price
     FROM tProduct tp
-    JOIN order_item oi ON tp.product_id = oi.product_id
-    WHERE oi."order_id" = :NEW."order_id";
+    WHERE product_id = :NEW.product_id;
     
-    DBMS_OUTPUT.put_line('v_sum: ' || v_sum);
 
-    UPDATE bill_tab bt
-    SET bt.sum = v_sum + bt.sum
-    WHERE bt.tab_id = (SELECT tab_id FROM tOrder WHERE "order_id" = :NEW."order_id");
+    UPDATE bill_tab
+    SET sum = sum + (v_price * :NEW.quantity)
+    WHERE tab_id = (SELECT tab_id FROM tOrder WHERE "order_id" = :NEW."order_id");
 END;
 /
 ------------------------------------------------------------------
@@ -247,7 +245,7 @@ INSERT INTO tTable VALUES (tTable_num.NEXTVAL, 5);
 --------------------------------------------------------------------------
 ----------------------TEST ORDERS-----------------------------------------
 --------------------------------------------------------------------------
--- If customer pays the bill, the order is deleted
+-- If customer pays the bill, all related orders are deleted from the system
 
 
 -- Tabs
@@ -279,7 +277,7 @@ VALUES (200, TO_DATE('2025-03-31 06:46:40', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107
 INSERT INTO order_item ("order_id", product_id, quantity) 
 VALUES (1, '000000004', 1); -- Lasagna 1x
 
-SELECT * FROM bill_tab
+SELECT * FROM bill_tab --======================================================================
 WHERE tab_id = 1;
 
 INSERT INTO order_item VALUES (1, '000000007', 2); -- Kofola 2x
@@ -287,7 +285,7 @@ INSERT INTO order_item VALUES (1, '000000008', 1); -- Water 1x
 -- INSERT INTO order_item VALUES (1, '000000007', 2); 
     -- Kofola 2x would be weird, make new order or update
 
-SELECT * FROM bill_tab
+SELECT * FROM bill_tab --======================================================================
 WHERE tab_id = 1;
 
 -- Order items second order - tab2 - table2
@@ -353,31 +351,6 @@ INSERT INTO reservation VALUES (
 --------------------------------------------------------------------------
 COMMIT;
 
-
--- Display number of reservations for each table and lounge
--- Aggregate function COUNT() with GROUP BY
-SELECT
-    TABLE_ID,
-    LOUNGE_ID,
-    COUNT(*) AS number_of_reservations
-FROM Reservation
-GROUP BY TABLE_ID, LOUNGE_ID;
-
-
-
-
--- Check if a any tables are reserved
--- Use of EXISTS
-SELECT 
-    t.TABLE_ID AS reserved_tables
-FROM TTABLE t
-WHERE EXISTS (
-    SELECT 1
-    FROM Reservation rs
-    WHERE rs.TABLE_ID = t.TABLE_ID
-);
-
-
 CREATE OR REPLACE PROCEDURE delete_order_cascade(
     p_tab_id IN bill_tab.tab_id%TYPE) 
     AS
@@ -391,7 +364,7 @@ BEGIN
         DELETE FROM tOrder WHERE "order_id" = v_order."order_id";
     END LOOP;
 
-    DBMS_OUTPUT.put_line('Smazán tab_id: ' || p_tab_id);
+    DBMS_OUTPUT.put_line('Orders for tab_id : ' || p_tab_id);
 END;
 /
 
@@ -408,9 +381,11 @@ GROUP BY o.tab_id, bt.table_id, bt.lounge_id;
 
 
 BEGIN
-    delete_order_cascade(2);
+    delete_order_cascade(2); --- delete orders related to bill  
 END;
 /
+
+SELECT * FROM bill_tab;
 
 SELECT
     o.tab_id,
