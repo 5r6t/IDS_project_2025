@@ -12,7 +12,7 @@ pair project for databases
 Odevzdává se dokument obsahující výše uvedené modely včetně stručného popisu datového modelu. Z popisu musí být zřejmý význam jednotlivých entitních a vztahových množin. 
 
 
-- [ ] 2. část - SQL skript pro vytvoření objektů schématu databáze
+- [x] 2. část - SQL skript pro vytvoření objektů schématu databáze
 
 > SQL skript vytvářející základní objekty schématu databáze, jako jsou tabulky vč. definice integritních omezení (zejména primárních a cizích klíčů), a naplňující vytvořené tabulky ukázkovými daty.
 > 
@@ -23,3 +23,25 @@ Odevzdává se dokument obsahující výše uvedené modely včetně stručného
 > V tabulkách databázového schématu musí být vhodná realizace vztahu generalizace/specializace určená pro čistě relační databázi, tedy musí být vhodně převeden uvedený vztah a související entity datového modelu na schéma relační databáze. Zvolený způsob převodu generalizace/specializace do schéma relační databáze musí být stručně vysvětlen (v komentáři SQL kódu).
 
 Skript také musí obsahovat automatické generování hodnot primárního klíče nějaké tabulky ze sekvence (např. pokud bude při vkládání záznamů do dané tabulky hodnota primárního klíče nedefinována, tj. NULL).
+
+- [ ] 4. část - SQL skript pro vytvoření pokročilých objektů schématu databáze
+
+- SQL skript:
+	- vytvoří základní objekty schéma databáze
+	- naplní tabulky ukázkovými daty (stejně jako skript v bodě 2)
+	- zadefinuje či vytvoří pokročilá omezení či objekty databáze dle upřesňujících požadavků zadání. 
+	- Dále skript bude obsahovat ukázkové příkazy manipulace dat a dotazy demonstrující použití výše zmiňovaných omezení a objektů tohoto skriptu (např. pro demonstraci použití indexů zavolá nejprve skript EXPLAIN PLAN na dotaz bez indexu, poté vytvoří index, a nakonec zavolá EXPLAIN PLAN na dotaz s indexem; 
+	- pro demonstraci databázového **triggeru** se provede manipulace s daty, která vyvolá daný trigger; atp.).
+	
+- musí konkrétně obsahovat vše z následujících:
+    - vytvoření alespoň dvou netriviálních databázových **triggerů** vč. jejich předvedení,
+    - vytvoření alespoň dvou netriviálních uložených **procedur** vč. jejich předvedení, ve kterých se musí (dohromady) vyskytovat alespoň jednou kurzor, ošetření výjimek a použití proměnné s datovým typem odkazujícím se na řádek či typ sloupce tabulky (`table_name.column_name%TYPE` nebo `table_name%ROWTYPE`),
+    - explicitní vytvoření alespoň jednoho **indexu** tak, aby pomohl optimalizovat zpracování dotazů, přičemž musí být uveden také příslušný dotaz, na který má index vliv, a na obhajobě vysvětlen způsob využití indexu v tomto dotazu (toto lze zkombinovat s EXPLAIN PLAN, vizte dále),
+    - alespoň jedno použití **EXPLAIN PLAN** pro výpis plánu provedení databázového dotazu se spojením alespoň dvou tabulek, agregační funkcí a klauzulí GROUP BY, přičemž na obhajobě musí být srozumitelně popsáno a vysvětleno, jak proběhne dle toho výpisu plánu provedení dotazu, vč. objasnění použitých prostředků pro jeho urychlení (např. použití indexu, druhu spojení, atp.), a dále musí být navrnut způsob, jak konkrétně by bylo možné dotaz dále urychlit (např. zavedením nového indexu), navržený způsob proveden (např. vytvořen index), zopakován EXPLAIN PLAN a jeho výsledek porovnán s výsledkem před provedením navrženého způsobu urychlení,
+    - definici přístupových práv k databázovým objektům pro druhého člena týmu,
+    - vytvoření alespoň jednoho materializovaného pohledu patřící druhému členu týmu a používající tabulky definované prvním členem týmu (nutno mít již definována přístupová práva), vč. SQL příkazů/dotazů ukazujících, jak materializovaný pohled funguje,
+    - vytvoření jednoho **komplexního dotazu SELECT** využívajícího klauzuli WITH a operátor CASE. V poznámce musí být uvedeno, jaká data dotaz získává.
+
+- Jednotlivé části tohoto skriptu bude potřeba na obhajobě vysvětlit, zejména část s příkazem EXPLAIN PLAN. Proto doporučujeme, aby si studenti připravili k obhajobě poznámky ve formátu krátkého textového dokumentu, které mohou být součástí odevzdání.
+
+Tip: pro ladění PL/SQL kódu v uložených procedurách či databázových triggerech můžete použít proceduru `DBMS_OUTPUT.put_line(...)` pro výstup na terminál klienta.

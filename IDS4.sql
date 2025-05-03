@@ -397,3 +397,15 @@ JOIN order_item oi ON o."order_id" = oi."order_id"
 JOIN tProduct tp ON oi.product_id = tp.product_id
 JOIN bill_tab bt ON o.tab_id = bt.tab_id
 GROUP BY o.tab_id, bt.table_id, bt.lounge_id;
+
+EXPLAIN PLAN FOR
+SELECT * FROM reservation WHERE table_id = 1 AND date_time > SYSDATE;
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
+
+CREATE INDEX idx_res_table_date ON reservation(table_id, date_time);
+
+EXPLAIN PLAN FOR
+SELECT * FROM reservation WHERE table_id = 1 AND date_time > SYSDATE;
+
+SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
