@@ -132,9 +132,9 @@ END;
 /
 
 /**
- * @brief checks for an already existing/conflicting reservation 
+ * @brief checks for an already existing/conflicting reservations
 */
-CREATE OR REPLACE TRIGGER trg_reservation_id
+CREATE OR REPLACE TRIGGER trg_reservation
 BEFORE INSERT ON reservation
 FOR EACH ROW
 DECLARE
@@ -366,6 +366,12 @@ INSERT INTO reservation VALUES (
     8, 180, '691219/4242',  NULL, 2  -- lounge 2
 );
 
+-- TEST: conflicting reservation
+INSERT INTO reservation VALUES ( 
+    5, TO_DATE('2025-06-01 20:45:00', 'YYYY-MM-DD HH24:MI:SS'),
+    8, 180, '600411/1212',  NULL, 2  -- lounge 2
+);
+
 -- Tabs
 CREATE SEQUENCE bill_num START WITH 1 INCREMENT BY 1;
 
@@ -529,7 +535,7 @@ WHERE product_id = '000000008';
 SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 
 ---------------------------------------------------------------------------------
---================ CREATE MATERIALIZED VIEW and GRANT RIGHT =====================
+--=============== CREATE MATERIALIZED VIEW and GRANT RIGHTS =====================
 ---------------------------------------------------------------------------------
 
 CREATE MATERIALIZED VIEW product_sales
