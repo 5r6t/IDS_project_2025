@@ -189,7 +189,8 @@ END;
 ---------------------------------------------------------------------------------
 /**
  * @brief inserts both person and employee into the system
- * Does not handle already existing peolpe
+ * Calls for adding an already existing person or employee
+ * are dropped
 */
 CREATE OR REPLACE PROCEDURE insert_employee (
     p_person_id IN VARCHAR2,
@@ -198,18 +199,32 @@ CREATE OR REPLACE PROCEDURE insert_employee (
     p_email IN VARCHAR2,
     p_position IN VARCHAR2
 ) AS
+    v_exists NUMBER;
 BEGIN
-    INSERT INTO Person (person_id, name, tel, email)
-    VALUES (p_person_id, p_name, p_tel, p_email);
+    SELECT COUNT(*) INTO v_exists FROM Person WHERE p_person_id = person_id;
+    IF v_exists = 0 THEN 
+        INSERT INTO Person (person_id, name, tel, email)
+        VALUES (p_person_id, p_name, p_tel, p_email);
+        DBMS_OUTPUT.PUT_LINE('Inserted Person: ' || p_person_id);
+    ELSE 
+        DBMS_OUTPUT.PUT_LINE('Skipped Person (already exists): ' || p_person_id);
+    END IF;
 
-    INSERT INTO Employee (person_id, position)
-    VALUES (p_person_id, p_position);
+    SELECT COUNT(*) INTO v_exists FROM Employee WHERE p_person_id = person_id;
+    IF v_exists = 0 THEN 
+        INSERT INTO Employee (person_id, position)
+        VALUES (p_person_id, p_position);
+        DBMS_OUTPUT.PUT_LINE('Inserted Employee: ' || p_person_id);
+    ELSE 
+        DBMS_OUTPUT.PUT_LINE('Skipped Employee (already exists): ' || p_person_id);
+    END IF;
 END;
 /
 
 /**
  * @brief inserts both person and customer into the system
- * Does not handle already existing people !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * Calls for adding an already existing person or custommer
+ * are dropped
 */
 CREATE OR REPLACE PROCEDURE insert_customer (
     p_person_id IN VARCHAR2,
@@ -218,18 +233,31 @@ CREATE OR REPLACE PROCEDURE insert_customer (
     p_email IN VARCHAR2,
     p_loyalty_tier IN VARCHAR2
 ) AS
+    v_exists NUMBER;
 BEGIN
-    INSERT INTO Person (person_id, name, tel, email)
-    VALUES (p_person_id, p_name, p_tel, p_email);
+    SELECT COUNT(*) INTO v_exists FROM Person WHERE person_id = p_person_id;
+    IF v_exists = 0 THEN 
+        INSERT INTO Person (person_id, name, tel, email)
+        VALUES (p_person_id, p_name, p_tel, p_email);
+        DBMS_OUTPUT.PUT_LINE('Inserted Person: ' || p_person_id);
+    ELSE 
+        DBMS_OUTPUT.PUT_LINE('Skipped Person (already exists): ' || p_person_id);
+    END IF;
 
-    INSERT INTO Customer (person_id, loyalty_tier)
-    VALUES (p_person_id, p_loyalty_tier);
+    SELECT COUNT(*) INTO v_exists FROM Customer WHERE person_id = p_person_id;
+    IF v_exists = 0 THEN
+        INSERT INTO Customer (person_id, loyalty_tier)
+        VALUES (p_person_id, p_loyalty_tier);
+        DBMS_OUTPUT.PUT_LINE('Inserted Customer: ' || p_person_id);
+    ELSE 
+        DBMS_OUTPUT.PUT_LINE('Skipped Customer (already exists): ' || p_person_id);
+    END IF;
 END;
 /
 
 /**
  * @brief this procedure deletes all orders that belong to a specific tab
- * Possible use-case is for when the tab is paid, the information about it's
+ * Possible use-case is for when the tab is paid, the information about its
  * contents are no longer needed.
 */
 CREATE OR REPLACE PROCEDURE proc_delete_orders(
@@ -379,32 +407,33 @@ INSERT INTO order_item VALUES (4, '000000007', 6); -- Kofola 6x,
 --====================== delete_orders -- DEMNOSTRATION =========================
 ---------------------------------------------------------------------------------
 SELECT
-    o.tab_id,
-    SUM(oi.quantity * tp.price) AS "SUM",
+    bt.tab_id,
+    bt.sum AS total_sum,
     bt.table_id,
-    bt.lounge_id
-FROM tOrder o
-JOIN order_item oi ON o."order_id" = oi."order_id"
-JOIN tProduct tp ON oi.product_id = tp.product_id
-JOIN bill_tab bt ON o.tab_id = bt.tab_id
-GROUP BY o.tab_id, bt.table_id, bt.lounge_id;
+    bt.lounge_id,
+    COUNT(o."order_id") AS order_amount
+FROM bill_tab bt
+LEFT JOIN tOrder o ON o.tab_id = bt.tab_id
+GROUP BY bt.tab_id, bt.sum, bt.table_id, bt.lounge_id
+ORDER BY bt.tab_id;
 
 
 BEGIN
-    proc_delete_orders(2);
+    proc_delete_orders(3);
 END;
 /
 
 SELECT
-    o.tab_id,
-    SUM(oi.quantity * tp.price) AS "SUM",
+    bt.tab_id,
+    bt.sum AS total_sum,
     bt.table_id,
-    bt.lounge_id
-FROM tOrder o
-JOIN order_item oi ON o."order_id" = oi."order_id"
-JOIN tProduct tp ON oi.product_id = tp.product_id
-JOIN bill_tab bt ON o.tab_id = bt.tab_id
-GROUP BY o.tab_id, bt.table_id, bt.lounge_id;
+    bt.lounge_id,
+    COUNT(o."order_id") AS order_amount
+FROM bill_tab bt
+LEFT JOIN tOrder o ON o.tab_id = bt.tab_id
+GROUP BY bt.tab_id, bt.sum, bt.table_id, bt.lounge_id
+ORDER BY bt.tab_id;
+
 
 COMMIT;
 
