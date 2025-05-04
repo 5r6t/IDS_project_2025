@@ -14,6 +14,8 @@ DROP SEQUENCE lounge_num;
 DROP SEQUENCE bill_num;
 DROP SEQUENCE order_seq;
 
+DROP MATERIALIZED VIEW product_sales;
+
 ---------------------------------------------------------------------------------
 --======================= CREATE TABLES FOR OBJECTS =============================
 ---------------------------------------------------------------------------------
@@ -85,7 +87,7 @@ START WITH 1
 INCREMENT BY 1;
 
 CREATE TABLE tOrder (
-    "order_id" INT PRIMARY KEY,
+    tOrder_id INT PRIMARY KEY,
     date_time DATE,
     tab_id INT NOT NULL,
     employee_id VARCHAR(11),
@@ -100,11 +102,11 @@ CREATE TABLE tProduct (
 );
 
 CREATE TABLE order_item (
-    "order_id" INTEGER,
+    tOrder_id INTEGER,
     product_id VARCHAR(50),
     quantity INTEGER NOT NULL,
-    PRIMARY KEY ("order_id", product_id),
-    FOREIGN KEY ("order_id") REFERENCES tOrder("order_id"),
+    PRIMARY KEY (tOrder_id, product_id),
+    FOREIGN KEY (tOrder_id) REFERENCES tOrder(tOrder_id),
     FOREIGN KEY (product_id) REFERENCES tProduct(product_id)
 );
 
@@ -123,9 +125,9 @@ GRANT ALL ON Customer TO xhajekj00;
 CREATE OR REPLACE TRIGGER trg_order_id
 BEFORE INSERT ON tOrder
 FOR EACH ROW
-WHEN (NEW."order_id" IS NULL)
+WHEN (NEW.tOrder_id IS NULL)
 BEGIN
-    SELECT order_seq.NEXTVAL INTO :NEW."order_id" FROM dual;
+    SELECT order_seq.NEXTVAL INTO :NEW.tOrder_id FROM dual;
 END;
 /
 
@@ -180,7 +182,7 @@ BEGIN
 
     UPDATE bill_tab
     SET sum = sum + (v_price * :NEW.quantity)
-    WHERE tab_id = (SELECT tab_id FROM tOrder WHERE "order_id" = :NEW."order_id");
+    WHERE tab_id = (SELECT tab_id FROM tOrder WHERE tOrder_id = :NEW.tOrder_id);
 END;
 /
 
@@ -218,6 +220,10 @@ BEGIN
     ELSE 
         DBMS_OUTPUT.PUT_LINE('Skipped Employee (already exists): ' || p_person_id);
     END IF;
+    
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error inserting employee: ' || SQLERRM);
 END;
 /
 
@@ -252,6 +258,10 @@ BEGIN
     ELSE 
         DBMS_OUTPUT.PUT_LINE('Skipped Customer (already exists): ' || p_person_id);
     END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error inserting customer: ' || SQLERRM);
 END;
 /
 
@@ -260,7 +270,7 @@ END;
  * Possible use-case is for when the tab is paid, the information about its
  * contents are no longer needed.
 */
-CREATE OR REPLACE PROCEDURE proc_delete_orders(
+CREATE OR REPLACE PROCEDURE delete_orders(
     p_tab_id IN bill_tab.tab_id%TYPE) 
     AS
     v_order tOrder%ROWTYPE;
@@ -269,11 +279,15 @@ CREATE OR REPLACE PROCEDURE proc_delete_orders(
         SELECT * FROM tOrder WHERE tab_id = p_tab_id;
 BEGIN
     FOR v_order IN c_orders LOOP
-        DELETE FROM order_item WHERE "order_id" = v_order."order_id";
-        DELETE FROM tOrder WHERE "order_id" = v_order."order_id";
+        DELETE FROM order_item WHERE tOrder_id = v_order.tOrder_id;
+        DELETE FROM tOrder WHERE tOrder_id = v_order.tOrder_id;
     END LOOP;
 
-    DBMS_OUTPUT.put_line('Orders for tab_id : ' || p_tab_id);
+    DBMS_OUTPUT.put_line('Number of orders to be removed: ' || p_tab_id);
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('Error while removing orders: ' || SQLERRM);
 END;
 /
 
@@ -374,11 +388,11 @@ VALUES (TO_DATE('2025-03-30 06:19:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544
 INSERT INTO tOrder (date_time, tab_id, employee_id)
 VALUES (TO_DATE('2025-03-30 06:40:10', 'YYYY-MM-DD HH24:MI:SS'), 3, '670726/3232'); -- Jason, tab3 (lounge)
 
-INSERT INTO tOrder ("order_id", date_time, tab_id, employee_id)
+INSERT INTO tOrder (tOrder_id, date_time, tab_id, employee_id)
 VALUES (200, TO_DATE('2025-03-31 06:46:40', 'YYYY-MM-DD HH24:MI:SS'), 3, '640107/5544'); -- Nick, tab3 (lounge)
 
 -- Order items first order - tab1 - table1
-INSERT INTO order_item ("order_id", product_id, quantity) 
+INSERT INTO order_item (tOrder_id, product_id, quantity) 
 VALUES (1, '000000004', 1); -- Lasagna 1x
 
 ---------------------------------------------------------------------------------
@@ -411,7 +425,7 @@ SELECT
     bt.sum AS total_sum,
     bt.table_id,
     bt.lounge_id,
-    COUNT(o."order_id") AS order_amount
+    COUNT(o.tOrder_id) AS order_amount
 FROM bill_tab bt
 LEFT JOIN tOrder o ON o.tab_id = bt.tab_id
 GROUP BY bt.tab_id, bt.sum, bt.table_id, bt.lounge_id
@@ -419,7 +433,7 @@ ORDER BY bt.tab_id;
 
 
 BEGIN
-    proc_delete_orders(3);
+    delete_orders(3);
 END;
 /
 
@@ -428,45 +442,110 @@ SELECT
     bt.sum AS total_sum,
     bt.table_id,
     bt.lounge_id,
-    COUNT(o."order_id") AS order_amount
+    COUNT(o.tOrder_id) AS order_amount
 FROM bill_tab bt
 LEFT JOIN tOrder o ON o.tab_id = bt.tab_id
 GROUP BY bt.tab_id, bt.sum, bt.table_id, bt.lounge_id
 ORDER BY bt.tab_id;
 
+/**
+ * @brief show categorized prices of products
+ * and how many were ordered so far  
+*/
+WITH product_stats AS (
+    SELECT 
+        tp.name,
+        tp.price,
+        COUNT(oi.product_id) AS order_count
+    FROM tProduct tp
+    LEFT JOIN order_item oi ON tp.product_id = oi.product_id
+    GROUP BY tp.name, tp.price
+)
+SELECT 
+    name,
+    price,
+    order_count,
+    CASE
+        WHEN price >= 25 THEN 'Expensive'
+        WHEN price >= 10 THEN 'Normal price'
+        ELSE 'Low cost'
+    END AS price_category
+FROM product_stats
+ORDER BY order_count DESC;
 
-COMMIT;
 
 ---------------------------------------------------------------------------------
 --======================== EXPLAIN PLAN DEMNOSTRATION ===========================
 ---------------------------------------------------------------------------------
+-- fill with lots of orders
+BEGIN
+    FOR i IN 1001..2000 LOOP
+        INSERT INTO tOrder (
+            tOrder_id, date_time, tab_id, employee_id
+        ) VALUES (
+            i,
+            TO_DATE('2025-05-01 12:00:00', 'YYYY-MM-DD HH24:MI:SS') + (i / 100),  -- spread dates
+            MOD(i, 3) + 1,         -- existing tab_ids (1 to 3)
+            '921231/4343'
+        );
+    END LOOP;
+    COMMIT;
+END;
+/
+-- and ordered products
+BEGIN
+    FOR i IN 1001..2000 LOOP
+        FOR j IN 1..5 LOOP
+            INSERT INTO order_item (
+                tOrder_id, product_id, quantity
+            ) VALUES (
+                i,
+                LPAD(j, 9, '0'),       -- product_id = '000000001' to '000000005'
+                MOD(i + j, 4) + 1      -- quantity 1 to 4
+            );
+        END LOOP;
+    END LOOP;
+    COMMIT;
+END;
+/
+
+
 EXPLAIN PLAN FOR
-SELECT * FROM reservation WHERE table_id = 1 AND date_time > SYSDATE;
+SELECT *
+FROM order_item
+WHERE product_id = '000000008'; -- water, rarely bought
+
 
 SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 
-CREATE INDEX idx_res_table_date ON reservation(table_id, date_time);
+CREATE INDEX idx_orderitem_product ON order_item(product_id);
 
 EXPLAIN PLAN FOR
-SELECT * FROM reservation WHERE table_id = 1 AND date_time > SYSDATE;
+SELECT *
+FROM order_item
+WHERE product_id = '000000008';
+
 
 SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 
-/* PLAN_TABLE_OUTPUT
 ---------------------------------------------------------------------------------
-| Id  | Operation         | Name        | Rows  | Bytes | Cost (%CPU)| Time     |
+--================ CREATE MATERIALIZED VIEW and GRANT RIGHT =====================
 ---------------------------------------------------------------------------------
-|   0 | SELECT STATEMENT  |             |     1 |    81 |     3   (0)| 00:00:01 |
-|*  1 |  TABLE ACCESS FULL| RESERVATION |     1 |    81 |     3   (0)| 00:00:01 |
----------------------------------------------------------------------------------
- 
-PLAN_TABLE_OUTPUT
-----------------------------------------------------------------------------------------------------------
-| Id  | Operation                           | Name               | Rows  | Bytes | Cost (%CPU)| Time     |
-----------------------------------------------------------------------------------------------------------
-|   0 | SELECT STATEMENT                    |                    |     1 |    81 |     0   (0)| 00:00:01 |
-|   1 |  TABLE ACCESS BY INDEX ROWID BATCHED| RESERVATION        |     1 |    81 |     0   (0)| 00:00:01 |
-|*  2 |   INDEX RANGE SCAN                  | IDX_RES_TABLE_DATE |     1 |       |     0   (0)| 00:00:01 |
-----------------------------------------------------------------------------------------------------------
--- CPU cost has been reduced
-*/
+
+CREATE MATERIALIZED VIEW product_sales
+BUILD IMMEDIATE
+REFRESH ON DEMAND
+AS
+SELECT 
+    tp.product_id,
+    tp.name,
+    tp.price,
+    SUM(oi.quantity) AS total_sold,
+    COUNT(DISTINCT oi.tOrder_id) AS total_orders
+FROM tProduct tp
+LEFT JOIN order_item oi ON tp.product_id = oi.product_id
+GROUP BY tp.product_id, tp.name, tp.price;
+
+GRANT SELECT ON product_sales TO xhajekj00;
+
+COMMIT;
