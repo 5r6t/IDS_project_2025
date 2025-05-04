@@ -535,23 +535,10 @@ WHERE product_id = '000000008';
 SELECT * FROM TABLE(DBMS_XPLAN.DISPLAY);
 
 ---------------------------------------------------------------------------------
---=============== CREATE MATERIALIZED VIEW and GRANT RIGHTS =====================
+--============================== GRANT RIGHTS ===================================
 ---------------------------------------------------------------------------------
 
-CREATE MATERIALIZED VIEW product_sales
-BUILD IMMEDIATE
-REFRESH ON DEMAND
-AS
-SELECT 
-    tp.product_id,
-    tp.name,
-    tp.price,
-    SUM(oi.quantity) AS total_sold,
-    COUNT(DISTINCT oi.tOrder_id) AS total_orders
-FROM tProduct tp
-LEFT JOIN order_item oi ON tp.product_id = oi.product_id
-GROUP BY tp.product_id, tp.name, tp.price;
-
-GRANT SELECT ON product_sales TO xhajekj00;
+GRANT SELECT ON tProduct TO xhajekj00;
+GRANT SELECT ON order_item TO xhajekj00;
 
 COMMIT;
